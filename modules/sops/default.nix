@@ -177,6 +177,33 @@ let
             Setting this option moves the secret to /run/secrets-for-users and disallows setting owner and group to anything else than root.
           '';
         };
+        content = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = lib.mkIf (config.sops.enableBuildTimeContent || false) (
+            readSecretFns.getSecretContent config._module.args.name {
+              sopsFile = config.sopsFile;
+              key = config.key;
+              format = config.format;
+            }
+          );
+          defaultText = "null (unless sops.enableBuildTimeContent is true)";
+          description = ''
+            The plaintext content of the secret available at build time.
+
+            This option provides direct access to the secret content as a string value
+            that can be used in Nix expressions and configurations during build time.
+
+            WARNING: This option decrypts secrets during build time, which means the
+            plaintext content will be stored in the Nix store. Only use this for
+            non-sensitive data or development environments where Nix store access
+            is restricted.
+
+            For production use cases, consider using the runtime secret provisioning
+            via the `path` attribute instead.
+
+            This option is only enabled when `sops.enableBuildTimeContent` is set to true.
+          '';
+        };
       };
     }
   );
@@ -192,6 +219,13 @@ let
       )
     else
       [ ];
+
+  # Import read-secret functionality
+  readSecretFns = import ./read-secret.nix {
+    inherit lib pkgs;
+    inherit cfg;
+  };
+
 in
 {
   options.sops = {
@@ -296,6 +330,26 @@ in
         sops-install-secrets package to use when validating configuration.
 
         Defaults to sops.package if building natively, and a native version of sops-install-secrets if cross compiling.
+      '';
+    };
+
+    enableBuildTimeContent = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable build-time secret content access through the `content` attribute.
+
+        WARNING: When enabled, this will decrypt secrets during the Nix build process,
+        storing plaintext content in the Nix store. This makes secrets accessible to
+        any user with access to the Nix store.
+
+        Only enable this option for:
+        - Non-sensitive configuration data
+        - Development environments with restricted Nix store access
+        - Testing purposes
+
+        For production use cases with sensitive data, keep this disabled and use
+        the runtime secret provisioning via the `path` attribute instead.
       '';
     };
 
@@ -484,6 +538,11 @@ in
     })
     {
       system.build.sops-nix-manifest = manifest;
+
+      # Provide build-time secret content
+      sops.content = lib.mapAttrs (name: secret:
+        if secret.content != null then secret.content else null
+      ) cfg.secrets;
     }
   ];
 }
