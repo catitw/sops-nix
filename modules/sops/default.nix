@@ -179,7 +179,7 @@ let
         };
         content = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
-          default = lib.mkIf (config.sops.enableBuildTimeContent || false) (
+          default = lib.mkIf (cfg.enableBuildTimeContent || false) (
             readSecretFns.getSecretContent config._module.args.name {
               sopsFile = config.sopsFile;
               key = config.key;
