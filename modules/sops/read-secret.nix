@@ -25,10 +25,10 @@ let
           (if secretConfig.key or "" != "" then secretConfig.key else secretName)
           else key;
         SOPS_FORMAT = format;
-      } // lib.optionalAttrs (cfg.gnupgHome != null) {
-        GNUPGHOME = cfg.gnupgHome;
-      } // lib.optionalAttrs (cfg.ageKeyFile != null) {
-        SOPS_AGE_KEY_FILE = cfg.ageKeyFile;
+      } // lib.optionalAttrs (cfg.gnupg.home != null) {
+        GNUPGHOME = cfg.gnupg.home;
+      } // lib.optionalAttrs (cfg.age.ageKeyFile != null) {
+        SOPS_AGE_KEY_FILE = cfg.age.ageKeyFile;
       };
 
       # Build the command to read the secret
@@ -42,10 +42,10 @@ let
           --file "$SOPS_FILE" \
           ${lib.optionalString (sopsEnv.SOPS_KEY != "") "--key \"$SOPS_KEY\""} \
           --format "$SOPS_FORMAT" \
-          ${lib.concatStringsSep " " (map (path: "--ssh-key-path \"${path}\"") (cfg.ageSSHKeyPaths or []))} \
-          ${lib.concatStringsSep " " (map (path: "--ssh-key-path \"${path}\"") (cfg.sshKeyPaths or []))} \
-          ${lib.optionalString (cfg.gnupgHome != null) "--gnupg-home \"${cfg.gnupgHome}\""} \
-          ${lib.optionalString (cfg.ageKeyFile != null) "--age-key-file \"${cfg.ageKeyFile}\""}
+          ${lib.concatStringsSep " " (map (path: "--ssh-key-path \"${path}\"") (cfg.age.sshKeyPaths or []))} \
+          ${lib.concatStringsSep " " (map (path: "--ssh-key-path \"${path}\"") (cfg.gnupg.sshKeyPaths or []))} \
+          ${lib.optionalString (cfg.gnupg.home != null) "--gnupg-home \"${cfg.gnupg.home}\""} \
+          ${lib.optionalString (cfg.age.keyFile != null) "--age-key-file \"${cfg.age.keyFile}\""}
       '';
     in
     pkgs.runCommand "secret-${secretName}-content" {
